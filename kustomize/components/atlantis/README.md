@@ -11,25 +11,6 @@ Source:
 
 ## Patches
 
-### atlantis--ingress
-
-The hostname of the app to set in the traefik ingress controller.
-
-```yaml
-  - target:
-      group: extensions
-      version: v1beta1
-      kind: Ingress
-      name: atlantis
-    path: patches/atlantis/atlantis--ingress.yml
-  - target:
-      group: extensions
-      version: v1beta1
-      kind: Ingress
-      name: atlantis-security
-    path: patches/atlantis/atlantis--ingress.yml
-```
-
 ### atlantis--deployment
 
 The following environment variables needs to be patched:

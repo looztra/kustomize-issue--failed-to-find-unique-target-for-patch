@@ -1,0 +1,40 @@
+---
+# VAULT_ADDR / vault-agent
+- op: replace
+  path: /spec/template/spec/containers/0/env/0/value
+  value: https://vault.vault
+
+# VAULT_SKIP_VERIFY / vault-agent
+- op: replace
+  path: /spec/template/spec/containers/0/env/1/value
+  value: 'true'
+
+# VAULT_ADDR / consul-template
+- op: replace
+  path: /spec/template/spec/containers/1/env/0/value
+  value: https://vault.vault
+
+# VAULT_SKIP_VERIFY / consul-template
+- op: replace
+  path: /spec/template/spec/containers/1/env/1/value
+  value: 'true'
+
+# VAULT_ADDR / atlantis
+- op: replace
+  path: /spec/template/spec/containers/2/env/0/value
+  value: https://vault.vault
+
+# VAULT_SKIP_VERIFY / atlantis
+- op: replace
+  path: /spec/template/spec/containers/2/env/1/value
+  value: 'true'
+
+# ATLANTIS_ATLANTIS_URL / atlantis
+- op: replace
+  path: /spec/template/spec/containers/2/env/2/value
+  value: https://atlantis.gasp.xip.io
+
+# ATLANTIS_REPO_WHITELIST / atlantis
+- op: replace
+  path: /spec/template/spec/containers/2/env/3/value
+  value: github.com/nodevops/*

@@ -1,5 +1,9 @@
 # Kustomization fails with version >= 3.0.0 because namespace
 
+## Pointers
+
+- see <https://github.com/kubernetes-sigs/kustomize/issues/1332>
+
 ## What?
 
 ```bash
@@ -94,3 +98,55 @@ metadata:
 ```
 
 and it works for both `v2.1.0` and `v3.0.0`
+
+## Other fix
+
+Specify the namespace in the patch target like suggested in <https://github.com/kubernetes-sigs/kustomize/issues/1332>
+
+```yaml
+patchesJson6902:
+  # atlantis
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: atlantis
+      namespace: atlantis
+    path: patches/atlantis/atlantis--deployment.yml
+```
+
+```bash
+#
+# Switch to kustomize v3.0.0
+#
+╰─» asdf global kustomize v3.0.0
+    kustomize version
+    kustomize build kustomize/instances/gasp/
+
+Version: {KustomizeVersion:3.0.0 GitCommit:e0bac6ad192f33d993f11206e24f6cda1d04c4ec BuildDate:2019-07-03T18:21:24Z GoOs:linux GoArch:amd64}
+Version: {KustomizeVersion:3.0.0 GitCommit:e0bac6ad192f33d993f11206e24f6cda1d04c4ec BuildDate:2019-07-03T18:21:24Z GoOs:linux GoArch:amd64}
+apiVersion: v1
+kind: Namespace
+metadata:
+  annotations:
+    nodevops.io/generated-by: kustomize
+    nodevops.io/kustomize-assembly: instance/works
+    nodevops.io/kustomize-component: atlantis
+  name: atlantis
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    nodevops.io/generated-by: kustomize
+    nodevops.io/kustomize-assembly: instance/works
+    nodevops.io/kustomize-component: atlantis
+    nodevops.io/owner: techops
+  labels:
+    app: atlantis
+  name: atlantis
+  namespace: atlantis
+.
+.
+.
+```
