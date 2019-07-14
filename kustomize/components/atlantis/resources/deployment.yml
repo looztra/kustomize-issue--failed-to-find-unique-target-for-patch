@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: atlantis
-  namespace: atlantis
+  namespace: OVERLOADED_DURING_KUSTOMIZATION
   labels:
     app: atlantis
   annotations:
