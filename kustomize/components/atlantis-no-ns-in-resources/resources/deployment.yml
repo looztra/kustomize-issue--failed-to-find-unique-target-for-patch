@@ -1,0 +1,166 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: atlantis
+  labels:
+    app: atlantis
+  annotations:
+    nodevops.io/owner: techops
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: atlantis
+  template:
+    metadata:
+      labels:
+        app: atlantis
+    spec:
+      serviceAccountName: atlantis
+      securityContext:
+        fsGroup: 100
+      containers:
+        # Vault Agent container
+        - name: vault-agent
+          image: FIXME/vault
+          imagePullPolicy: IfNotPresent
+          args:
+            - agent
+            - -config=/etc/vault/vault-agent-config.hcl
+          env:
+            - name: VAULT_ADDR
+              value: FIXME
+            - name: VAULT_SKIP_VERIFY
+              value: FIXME
+          resources:
+            limits:
+              memory: 50Mi
+            requests:
+              cpu: 10m
+          terminationMessagePolicy: FallbackToLogsOnError
+          volumeMounts:
+            - name: vault-token
+              mountPath: /home/vault
+            - name: vault-agent-config
+              mountPath: /etc/vault
+
+        # Consul Template container
+        - name: consul-template
+          image: FIXME/consul-template
+          imagePullPolicy: IfNotPresent
+          args:
+            - -config=/etc/consul-template/consul-template-config.hcl
+          env:
+            - name: VAULT_ADDR
+              value: FIXME
+            - name: VAULT_SKIP_VERIFY
+              value: FIXME
+          resources:
+            limits:
+              memory: 50Mi
+            requests:
+              cpu: 10m
+          volumeMounts:
+            - name: atlantis-github-ssh
+              mountPath: '/home/atlantis/.ssh'
+            - name: consul-template-config
+              mountPath: /etc/consul-template
+            - name: shared-data
+              mountPath: /etc/atlantis/
+            - name: vault-token
+              mountPath: /home/vault
+
+        # Atlantis container
+        - name: atlantis
+          image: FIXME/atlantis
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - /opt/atlantis/custom-entrypoint.sh
+          env:
+            - name: VAULT_ADDR
+              value: FIXME
+            - name: VAULT_SKIP_VERIFY
+              value: FIXME
+            - name: ATLANTIS_ATLANTIS_URL
+              value: FIXME
+            - name: ATLANTIS_REPO_WHITELIST
+              value: FIXME
+            - name: ATLANTIS_CONFIG
+              value: /etc/atlantis/config.yaml
+            - name: ATLANTIS_DATA_DIR
+              value: /atlantis
+            - name: ATLANTIS_LOG_LEVEL
+              value: debug
+            - name: ATLANTIS_PORT
+              value: '4141'
+            - name: ATLANTIS_REPO_CONFIG_JSON
+              value: '{"repos":[{"id":"/.*/", "allowed_overrides":["apply_requirements","workflow"], "allow_custom_workflows":true}]}'
+            - name: ATLANTIS_SSL_CERT_FILE
+              value: /etc/atlantis/tls/tls.crt
+            - name: ATLANTIS_SSL_KEY_FILE
+              value: /etc/atlantis/tls/tls.key
+            # Disable SSH strict key checking
+            - name: GIT_SSH_COMMAND
+              value: "ssh -o 'StrictHostKeyChecking no'"
+          ports:
+            - name: atlantis-https
+              containerPort: 4141
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: atlantis-https
+              scheme: HTTPS
+            initialDelaySeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: atlantis-https
+              scheme: HTTPS
+            initialDelaySeconds: 15
+          resources:
+            limits:
+              memory: 150Mi
+            requests:
+              cpu: 100m
+          securityContext:
+            runAsUser: 100
+          terminationMessagePolicy: FallbackToLogsOnError
+          volumeMounts:
+            - name: shared-data
+              mountPath: /etc/atlantis/
+            - name: atlantis-github-ssh
+              mountPath: /home/atlantis/.ssh
+            - name: atlantis-data
+              mountPath: /atlantis
+            - name: vault-token
+              mountPath: /home/atlantis
+            - name: atlantis-custom-entrypoint
+              mountPath: /opt/atlantis
+      volumes:
+        - name: atlantis-custom-entrypoint
+          configMap:
+            name: atlantis-custom-entrypoint
+            defaultMode: 0777
+        - name: atlantis-data
+          persistentVolumeClaim:
+            claimName: atlantis-data
+        - name: atlantis-github-ssh
+          emptyDir:
+            medium: Memory
+        - name: consul-template-config
+          configMap:
+            name: consul-template-config
+        - name: shared-data
+          emptyDir:
+            medium: Memory
+        - name: vault-token
+          emptyDir:
+            medium: Memory
+        - name: vault-agent-config
+          configMap:
+            name: vault-agent-config

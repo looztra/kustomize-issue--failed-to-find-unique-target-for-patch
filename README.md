@@ -4,7 +4,14 @@
 
 - see <https://github.com/kubernetes-sigs/kustomize/issues/1332>
 
-## What?
+## Usecase 1
+
+- namespace in the _base_ resource specified to *any* value
+- namespace specified in the _base_ `kustomization.yml`
+- patchesJson6902 in the _overlay_ not specifying a namespace
+
+Kustomize `v2.1.0` : **OK**
+Kustomize `v3.0.x` : **NOK**
 
 ```bash
 #
@@ -12,7 +19,8 @@
 #
 ╰─» asdf global kustomize v2.1.0
     kustomize version
-    kustomize build kustomize/instances/gasp/
+    echo
+    kustomize build kustomize/instances/ok-v2.1.0-nok-v3.0.x
 
 Version: {KustomizeVersion:2.1.0 GitCommit:af67c893d87c5fb8200f8a3edac7fdafd61ec0bd BuildDate:2019-06-18T22:01:59Z GoOs:linux GoArch:amd64}
 
@@ -21,7 +29,7 @@ kind: Namespace
 metadata:
   annotations:
     nodevops.io/generated-by: kustomize
-    nodevops.io/kustomize-assembly: instance/gasp
+    nodevops.io/kustomize-assembly: instance/ok-v2.1.0-nok-v3.0.x
     nodevops.io/kustomize-component: atlantis
   name: atlantis
 ---
@@ -30,7 +38,7 @@ kind: Deployment
 metadata:
   annotations:
     nodevops.io/generated-by: kustomize
-    nodevops.io/kustomize-assembly: instance/gasp
+    nodevops.io/kustomize-assembly: instance/ok-v2.1.0-nok-v3.0.x
     nodevops.io/kustomize-component: atlantis
     nodevops.io/owner: techops
   labels:
@@ -69,7 +77,8 @@ metadata:
 #
 ╰─» asdf global kustomize v3.0.0
     kustomize version
-    kustomize build kustomize/instances/gasp/
+    echo
+    kustomize build kustomize/instances/ok-v2.1.0-nok-v3.0.x
 
 Version: {KustomizeVersion:3.0.0 GitCommit:e0bac6ad192f33d993f11206e24f6cda1d04c4ec BuildDate:2019-07-03T18:21:24Z GoOs:linux GoArch:amd64}
 
@@ -77,60 +86,50 @@ Error: no matches for OriginalId apps_v1_Deployment|~X|atlantis; no matches for 
 
 ```
 
-## The culprit
+### Fix to make it work with Kustomize `v3.0.x`
 
-in `kustomize/components/atlantis/resources/deployment.yml`, remove the namespace declaration (that is superfluous as the namespace is specified in `kustomization.yml` but that should not fail)
+- remove the namespace in in the _base_ resource (still works with `v2.1.0`)
+- **OR** specify the namespace in the patch target (breaks kustomize `v2.1.0`, see Usecase2)
 
-```yaml
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: atlantis
-  namespace: atlantis
-  labels:
-    app: atlantis
-  annotations:
-    nodevops.io/owner: techops
-.
-.
-.
-```
+## Usecase 2
 
-and it works for both `v2.1.0` and `v3.0.0`
+- namespace in the _base_ resource specified to *any* value
+- namespace specified in the _base_ `kustomization.yml`
+- patchesJson6902 in the _overlay_ specifying the namespace
 
-## Other fix
-
-Specify the namespace in the patch target like suggested in <https://github.com/kubernetes-sigs/kustomize/issues/1332>
-
-```yaml
-patchesJson6902:
-  # atlantis
-  - target:
-      group: apps
-      version: v1
-      kind: Deployment
-      name: atlantis
-      namespace: atlantis
-    path: patches/atlantis/atlantis--deployment.yml
-```
+Kustomize `v2.1.0` : **NOK**
+Kustomize `v3.0.x` : **OK**
 
 ```bash
+#
+# Switch to kustomize v2.1.0
+#
+╰─» asdf global kustomize v2.1.0
+    kustomize version
+    echo
+    kustomize build kustomize/instances/ok-v3.0.x-nok-v2.1.0
+
+Version: {KustomizeVersion:2.1.0 GitCommit:af67c893d87c5fb8200f8a3edac7fdafd61ec0bd BuildDate:2019-06-18T22:01:59Z GoOs:linux GoArch:amd64}
+
+Error: couldn't find target apps_v1_Deployment|atlantis|atlantis for json patch
+
+
 #
 # Switch to kustomize v3.0.0
 #
 ╰─» asdf global kustomize v3.0.0
     kustomize version
-    kustomize build kustomize/instances/gasp/
+    echo
+    kustomize build kustomize/instances/ok-v3.0.x-nok-v2.1.0
 
 Version: {KustomizeVersion:3.0.0 GitCommit:e0bac6ad192f33d993f11206e24f6cda1d04c4ec BuildDate:2019-07-03T18:21:24Z GoOs:linux GoArch:amd64}
-Version: {KustomizeVersion:3.0.0 GitCommit:e0bac6ad192f33d993f11206e24f6cda1d04c4ec BuildDate:2019-07-03T18:21:24Z GoOs:linux GoArch:amd64}
+
 apiVersion: v1
 kind: Namespace
 metadata:
   annotations:
     nodevops.io/generated-by: kustomize
-    nodevops.io/kustomize-assembly: instance/works
+    nodevops.io/kustomize-assembly: instance/ok-v3.0.x-nok-v2.1.0
     nodevops.io/kustomize-component: atlantis
   name: atlantis
 ---
@@ -139,7 +138,7 @@ kind: Deployment
 metadata:
   annotations:
     nodevops.io/generated-by: kustomize
-    nodevops.io/kustomize-assembly: instance/works
+    nodevops.io/kustomize-assembly: instance/ok-v3.0.x-nok-v2.1.0
     nodevops.io/kustomize-component: atlantis
     nodevops.io/owner: techops
   labels:
@@ -149,4 +148,87 @@ metadata:
 .
 .
 .
+
+```
+
+## Usecase 3
+
+- **NO** namespace in the _base_ resource
+- namespace specified in the _base_ `kustomization.yml`
+- patchesJson6902 in the _overlay_ **NOT** specifying the namespace
+
+Kustomize `v2.1.0` : **OK**
+Kustomize `v3.0.x` : **OK**
+
+```bash
+#
+# Switch to kustomize v2.1.0
+#
+╰─» asdf global kustomize v2.1.0
+    kustomize version
+    echo
+    kustomize build kustomize/instances/ok-v3.0.x-ok-v2.1.0
+
+Version: {KustomizeVersion:2.1.0 GitCommit:af67c893d87c5fb8200f8a3edac7fdafd61ec0bd BuildDate:2019-06-18T22:01:59Z GoOs:linux GoArch:amd64}
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  annotations:
+    nodevops.io/generated-by: kustomize
+    nodevops.io/kustomize-assembly: instance/ok-v3.0.x-ok-v2.1.0
+    nodevops.io/kustomize-component: atlantis
+  name: atlantis
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    nodevops.io/generated-by: kustomize
+    nodevops.io/kustomize-assembly: instance/ok-v3.0.x-ok-v2.1.0
+    nodevops.io/kustomize-component: atlantis
+    nodevops.io/owner: techops
+  labels:
+    app: atlantis
+  name: atlantis
+  namespace: atlantis
+.
+.
+.
+
+#
+# Switch to kustomize v3.0.0
+#
+╰─» asdf global kustomize v3.0.0
+    kustomize version
+    echo
+    kustomize build kustomize/instances/ok-v3.0.x-nok-v2.1.0
+
+Version: {KustomizeVersion:3.0.0 GitCommit:e0bac6ad192f33d993f11206e24f6cda1d04c4ec BuildDate:2019-07-03T18:21:24Z GoOs:linux GoArch:amd64}
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  annotations:
+    nodevops.io/generated-by: kustomize
+    nodevops.io/kustomize-assembly: instance/ok-v3.0.x-ok-v2.1.0
+    nodevops.io/kustomize-component: atlantis
+  name: atlantis
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    nodevops.io/generated-by: kustomize
+    nodevops.io/kustomize-assembly: instance/ok-v3.0.x-ok-v2.1.0
+    nodevops.io/kustomize-component: atlantis
+    nodevops.io/owner: techops
+  labels:
+    app: atlantis
+  name: atlantis
+  namespace: atlantis
+.
+.
+.
+
 ```

@@ -4,7 +4,7 @@ kind: Kustomization
 
 commonAnnotations:
   nodevops.io/generated-by: kustomize
-  nodevops.io/kustomize-assembly: instance/works
+  nodevops.io/kustomize-assembly: instance/ok-v2.1.0-nok-v3.0.x
 
 resources:
   - ../../components/atlantis
@@ -19,5 +19,4 @@ patchesJson6902:
       version: v1
       kind: Deployment
       name: atlantis
-      namespace: atlantis
     path: patches/atlantis/atlantis--deployment.yml
