@@ -2,7 +2,8 @@
 
 ## Pointers
 
-- see <https://github.com/kubernetes-sigs/kustomize/issues/1332>
+- <https://github.com/kubernetes-sigs/kustomize/issues/1332>
+- <https://github.com/kubernetes-sigs/kustomize/issues/1351>
 
 ## Usecase 1
 
